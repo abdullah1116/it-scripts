@@ -103,6 +103,16 @@ echo ""
                 tmpdir=$(mktemp -d)
                 trap 'rm -rf "$tmpdir"' EXIT
 
+                # Parallel MAC Address Lookup from warm ARP cache
+                (
+                    raw_mac=$(ip neigh show "$local_ip" 2>/dev/null | awk '{print $5}')
+                    if [[ "$raw_mac" =~ ^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$ ]]; then
+                        echo "$raw_mac" > "$tmpdir/mac"
+                    else
+                        echo "-----------------" > "$tmpdir/mac"
+                    fi
+                ) &
+
                 for idx in "${!PORTS_ARRAY[@]}"; do
                     p="${PORTS_ARRAY[$idx]}"
                     (
@@ -123,7 +133,9 @@ echo ""
                 done
                 wait
                 
-                printf -v res "%-15s" "$local_ip"
+                mac=$(cat "$tmpdir/mac" 2>/dev/null || echo "-----------------")
+                printf -v res "%-15s [%-17s]" "$local_ip" "$mac"
+                
                 for idx in "${!PORTS_ARRAY[@]}"; do
                     p="${PORTS_ARRAY[$idx]}"
                     s=$(cat "$tmpdir/$idx" 2>/dev/null || echo "   ")
