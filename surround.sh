@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Default ports
-PORTS_STR="80,443,554,8000"
+PORTS_STR="80,443,554,5060,8000"
 
 show_help() {
 cat << EOF
@@ -13,7 +13,7 @@ It automatically determines your default gateway, assigns the target network,
 and probes 254 IP addresses across specified ports using an ICMP gate followed by HTTP/TCP port checks.
 
 Options:
-  -p PORTS    Comma-separated list of ports to scan. (Default: 80,443,554,8000)
+  -p PORTS    Comma-separated list of ports to scan. (Default: 80,443,554,5060,8000)
   --help      Show this manual and exit.
 
 Example:
@@ -102,9 +102,9 @@ echo ""
                 printf -v res "%-15s" "$local_ip"
                 for p in "${PORTS_ARRAY[@]}"; do
                     # First check if the TCP port translates to open state
-                    if timeout 2 bash -c "</dev/tcp/$local_ip/$p" 2>/dev/null; then
+                    if timeout 1 bash -c "</dev/tcp/$local_ip/$p" 2>/dev/null; then
                         # Port is open. Try to grab HTTP status.
-                        s=$(curl -Is --connect-timeout 2 "http://$local_ip:$p" -o /dev/null -w "%{http_code}" 2>/dev/null || true)
+                        s=$(curl -Is --connect-timeout 1 "http://$local_ip:$p" -o /dev/null -w "%{http_code}" 2>/dev/null || true)
                         
                         # If curl couldn't get a valid HTTP status (e.g., it's RTSP or SSH), mark as OPN
                         if [[ "${s:-000}" == "000" ]]; then
