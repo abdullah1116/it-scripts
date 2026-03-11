@@ -99,21 +99,34 @@ echo ""
         (
             local_ip="$TARGET_NETWORK.$i"
             if ping -c 1 -W 1 "$local_ip" >/dev/null 2>&1; then
-                printf -v res "%-15s" "$local_ip"
-                for p in "${PORTS_ARRAY[@]}"; do
-                    # First check if the TCP port translates to open state
-                    if timeout 1 bash -c "</dev/tcp/$local_ip/$p" 2>/dev/null; then
-                        # Port is open. Try to grab HTTP status.
-                        s=$(curl -Is --connect-timeout 1 "http://$local_ip:$p" -o /dev/null -w "%{http_code}" 2>/dev/null || true)
-                        
-                        # If curl couldn't get a valid HTTP status (e.g., it's RTSP or SSH), mark as OPN
-                        if [[ "${s:-000}" == "000" ]]; then
-                            s="OPN"
+                # Temporary directory for parallel port results
+                tmpdir=$(mktemp -d)
+                trap 'rm -rf "$tmpdir"' EXIT
+
+                for idx in "${!PORTS_ARRAY[@]}"; do
+                    p="${PORTS_ARRAY[$idx]}"
+                    (
+                        # First check if the TCP port translates to open state with 0.5s timeout
+                        if timeout 0.5 bash -c "echo >/dev/tcp/$local_ip/$p" 2>/dev/null; then
+                            # Port is open. Try to grab HTTP status.
+                            s=$(curl -Is --connect-timeout 0.5 --max-time 1 "http://$local_ip:$p" -o /dev/null -w "%{http_code}" 2>/dev/null || true)
+                            
+                            # If curl couldn't get a valid HTTP status (e.g., it's RTSP or SSH), mark as OPN
+                            if [[ "${s:-000}" == "000" ]]; then
+                                s="OPN"
+                            fi
+                        else
+                            s="   "
                         fi
-                    else
-                        s="   "
-                    fi
-                    
+                        echo "$s" > "$tmpdir/$idx"
+                    ) &
+                done
+                wait
+                
+                printf -v res "%-15s" "$local_ip"
+                for idx in "${!PORTS_ARRAY[@]}"; do
+                    p="${PORTS_ARRAY[$idx]}"
+                    s=$(cat "$tmpdir/$idx" 2>/dev/null || echo "   ")
                     res="$res :$p = $s,"
                 done
                 # Print result, removing trailing comma
