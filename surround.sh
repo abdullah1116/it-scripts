@@ -82,16 +82,14 @@ else
 fi
 
 # Print Info
-echo "----------------------------------------"
-echo "Device Name    : $DEVICE_NAME"
-echo "Hardware       : $HARDWARE_MODEL"
-echo "Distro         : $DISTRO"
-echo "Uptime         : ${UPTIME#up }"
-echo "Router IP      : $ROUTER_IP"
-echo "Own IP         : $OWN_IP"
-echo "----------------------------------------"
-echo "Starting network scan..."
+echo "[ Device Name ] $DEVICE_NAME"
+echo "[ Hardware    ] $HARDWARE_MODEL"
+echo "[ Distro      ] $DISTRO"
+echo "[ Uptime      ] ${UPTIME#up }"
+echo "[ Router IP   ] $ROUTER_IP"
+echo "[ Own IP      ] $OWN_IP"
 echo ""
+echo "[STARTING NETWORK SCAN]"
 
 # Scan Loop
 {
@@ -139,14 +137,16 @@ echo ""
                 for idx in "${!PORTS_ARRAY[@]}"; do
                     p="${PORTS_ARRAY[$idx]}"
                     s=$(cat "$tmpdir/$idx" 2>/dev/null || echo "   ")
-                    res="$res :$p = $s,"
+                    res="$res [$p]=$s "
                 done
-                # Print result, removing trailing comma
-                echo "${res%,}"
+                # Print result
+                echo "$res"
             fi
         ) &
     done
 
     wait
 } | sort -V
-echo "Scan complete."
+echo ""
+echo "[SCAN COMPLETE]"
+echo ""
