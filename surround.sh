@@ -101,12 +101,16 @@ echo ""
             if ping -c 1 -W 1 "$local_ip" >/dev/null 2>&1; then
                 printf -v res "%-15s" "$local_ip"
                 for p in "${PORTS_ARRAY[@]}"; do
-                    # Extract status code
-                    # || true prevents early exit from pipefail if curl fails
-                    s=$(curl -Is --connect-timeout 1 "http://$local_ip:$p" -o /dev/null -w "%{http_code}" 2>/dev/null || true)
-                    
-                    # Normalize status code
-                    if [[ "${s:-000}" == "000" ]]; then
+                    # First check if the TCP port translates to open state
+                    if timeout 2 bash -c "</dev/tcp/$local_ip/$p" 2>/dev/null; then
+                        # Port is open. Try to grab HTTP status.
+                        s=$(curl -Is --connect-timeout 2 "http://$local_ip:$p" -o /dev/null -w "%{http_code}" 2>/dev/null || true)
+                        
+                        # If curl couldn't get a valid HTTP status (e.g., it's RTSP or SSH), mark as OPN
+                        if [[ "${s:-000}" == "000" ]]; then
+                            s="OPN"
+                        fi
+                    else
                         s="   "
                     fi
                     
